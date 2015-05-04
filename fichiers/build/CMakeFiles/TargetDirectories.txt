@@ -1,0 +1,2 @@
+/net/cremi/apatrone/GPU/Projet/fichiers/build/CMakeFiles/atoms.dir
+/net/cremi/apatrone/GPU/Projet/fichiers/build/libsotl/CMakeFiles/sotl.dir
