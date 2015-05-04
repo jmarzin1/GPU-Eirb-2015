@@ -14,7 +14,7 @@ typedef struct domain {
   unsigned nb_subdomains;                 /**< number of sub domains. */
   struct domain **subdomains;             /**< array of sub domainbs. */
   struct atom_set *atom_set;             /**< atom set. */
-  unsigned boite[27];
+  unsigned* boite;
 } sotl_domain_t;
 
 
