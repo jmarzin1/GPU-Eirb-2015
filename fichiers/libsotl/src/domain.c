@@ -47,7 +47,7 @@ void domain_init(sotl_domain_t *dom, const calc_t x_min, const calc_t y_min,
         dom->total_boxes *= dom->boxes[i];
 	dom->boites = malloc(sizeof(int*)*dom->total_boxes);
 	#pragma omp parallel for
-	(for int i = 0; i <  dom->total_boxes; i++) {
+	for (unsigned int i = 0; i <  dom->total_boxes; i++) {
 	  dom->boites[i]=0;
 	}
     }
@@ -275,14 +275,14 @@ sotl_domain_t *get_global_domain()
 }
 
 
-void remplir_boites(const sotl_domain_t *dom) {
-  //#pragma omp parallel for
-  for (int i = 0; i < dom->atom_set->natoms; i++) {
-    dom->boites[atom_get_num_box(dom, dom->atom_set->pos->x, dom->atom_set->pos->y,dom->atom_set->pos->z, BOX_SIZE_INV)]++; //doit etre atomique
-  }
-   for (int i = 1; i < dom->total_boxes; i++) {
-     dom->boites[i]+=dom->boites[i-1];
-   }
+/* void remplir_boites(const sotl_domain_t *dom) { */
+/*   //#pragma omp parallel for */
+/*   for (unsigned int i = 0; i < dom->atom_set->natoms; i++) { */
+/*     dom->boites[atom_get_num_box(dom, dom->atom_set->(pos->x, dom->atom_set->pos->y,dom->atom_set->pos->z, BOX_SIZE_INV)]++; //doit etre atomique */
+/*   } */
+/*    for (unsigned int i = 1; i < dom->total_boxes; i++) { */
+/*      dom->boites[i]+=dom->boites[i-1]; */
+/*    } */
   
-}
+/* } */
 

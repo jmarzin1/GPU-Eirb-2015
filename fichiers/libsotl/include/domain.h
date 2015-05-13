@@ -14,26 +14,26 @@ typedef struct domain {
   unsigned nb_subdomains;                 /**< number of sub domains. */
   struct domain **subdomains;             /**< array of sub domainbs. */
   struct atom_set *atom_set;             /**< atom set. */
-  unsigned* boite;
+  unsigned* boites;
 } sotl_domain_t;
 
 
 /**
  * Initialize a domain.
  */
-void domain_init(sotl_domain_t *dom, const alc_t x_min, const calc_t y_min,
+void domain_init(sotl_domain_t *dom, const calc_t x_min, const calc_t y_min,
                  const calc_t z_min, const calc_t x_max, const calc_t y_max,
                  const calc_t z_max);
 
 /**
  * Split a domain into n sub domains.
  */
-void domain_split(sotl_domain_t *dom, const unsigproutned n);
+void domain_split(sotl_domain_t *dom, const unsigned n);
 
 /**
  * Free memory allocated by a domain.
  */
-void domain_free(otl_domain_t *dom);
+void domain_free(sotl_domain_t *dom);
 
 /**
  * Print a domain.
