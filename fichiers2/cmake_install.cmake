@@ -1,4 +1,4 @@
-# Install script for directory: /net/cremi/jarnault/espaces/travail/Projet/fichiers
+# Install script for directory: /net/cremi/jarnault/espaces/travail/fichiers
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,7 +34,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("/net/cremi/jarnault/espaces/travail/Projet/fichiers/libsotl/cmake_install.cmake")
+  include("/net/cremi/jarnault/espaces/travail/fichiers/libsotl/cmake_install.cmake")
 
 endif()
 
@@ -44,7 +44,7 @@ else()
   set(CMAKE_INSTALL_MANIFEST "install_manifest.txt")
 endif()
 
-file(WRITE "/net/cremi/jarnault/espaces/travail/Projet/fichiers/${CMAKE_INSTALL_MANIFEST}" "")
+file(WRITE "/net/cremi/jarnault/espaces/travail/fichiers/${CMAKE_INSTALL_MANIFEST}" "")
 foreach(file ${CMAKE_INSTALL_MANIFEST_FILES})
-  file(APPEND "/net/cremi/jarnault/espaces/travail/Projet/fichiers/${CMAKE_INSTALL_MANIFEST}" "${file}\n")
+  file(APPEND "/net/cremi/jarnault/espaces/travail/fichiers/${CMAKE_INSTALL_MANIFEST}" "${file}\n")
 endforeach()

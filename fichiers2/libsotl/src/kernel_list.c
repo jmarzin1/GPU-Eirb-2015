@@ -6,15 +6,15 @@ static char *kernels_name[KERNEL_TAB_SIZE] = {
   "gravity", // Gravity
   "eating", // Eating
   "growing", // Growing
-  "null_kernel", // reset_int (NOT USED)
-  "null_kernel", // box count_all (NOT USED)
-  "null_kernel", // box_count (NOT_USED)
-  "null_kernel", // scan (NOT USED)
-  "null_kernel", // scan_down (NOT USED)
-  "null_kernel", // copy (NOT USED)
-  "null_kernel", // box_sort_all (NOT_USED)
+  "reset_int_buffer", // reset_int
+  "box_count_all_atoms", // box count_all
+  "null_kernel", // box_count (NOT USED)
+  "kernel_scan", // scan ()
+  "kernel_scan_down_step", // scan2 ()
+  "copy_buffer", // copy
+  "box_sort_all_atoms", // box_sort_all
   "null_kernel", // box_sort (NOT_USED)
-  "null_kernel", // box_force (NOT_USED)
+  "box_force", // box_force
   "lennard_jones", // force
   "border_collision",  // bounce
   "update_position", // update_position

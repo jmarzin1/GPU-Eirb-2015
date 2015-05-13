@@ -1,1 +1,1 @@
-/usr/bin/cc      CMakeFiles/atoms.dir/src/main.c.o CMakeFiles/atoms.dir/src/tools.c.o  -o ../bin/atoms -rdynamic libsotl/libsotl.so -lOpenCL -lm -lgomp -lGLU -lGL -lSM -lICE -lX11 -lXext -lglut -lXmu -lXi -Wl,-rpath,/net/cremi/jarnault/espaces/travail/Projet/fichiers/build/libsotl 
+/usr/bin/cc      CMakeFiles/atoms.dir/src/main.c.o CMakeFiles/atoms.dir/src/tools.c.o  -o ../bin/atoms -rdynamic libsotl/libsotl.so -lOpenCL -lm -lgomp -lGLU -lGL -lSM -lICE -lX11 -lXext -lglut -lXmu -lXi -Wl,-rpath,/net/cremi/jarnault/espaces/travail/Projet/GPU-Eirb-2015/fichiers2/build/libsotl 

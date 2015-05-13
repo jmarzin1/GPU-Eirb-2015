@@ -49,7 +49,6 @@ static void heap_sort(sotl_atom_set_t *set, const unsigned count)
 {
     int start, end;
 
-  
     /* heapify */
     start = (count - 2) / 2;
     for (; start >= 0; start--) {

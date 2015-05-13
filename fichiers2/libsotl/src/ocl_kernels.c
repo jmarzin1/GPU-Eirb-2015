@@ -42,8 +42,14 @@ void copy_int_buffer(sotl_device_t *dev, cl_mem *dst_buf, cl_mem *src_buf,
     }
 }
 
-void
-border_collision (sotl_device_t *dev)
+void copy_box_buffer(sotl_device_t *dev)
+{
+    copy_int_buffer(dev, &dev->calc_offset_buffer, &dev->box_buffer,
+                    dev->domain.total_boxes + 1);
+}
+
+
+void border_collision (sotl_device_t *dev)
 {
     calc_t radius = ATOM_RADIUS;	
 
@@ -155,25 +161,32 @@ void n2_lennard_jones (sotl_device_t *dev)
     check(err, "Failed to exec kernel: %s\n", kernel_name(k));
 }
 
+extern float normalized_vert[3];
+
 void gravity (sotl_device_t *dev)
 {
     size_t global, local;
-    calc_t g = 0.005;
+    const calc_t g = 0.004;
+    calc_t gx = g * normalized_vert[0],
+      gy = g * normalized_vert[1],
+      gz = g * normalized_vert[2];
 
     int k = KERNEL_GRAVITY;
 
     // Set the arguments to our compute kernel
     int err = CL_SUCCESS;
-    err |= clSetKernelArg (dev->kernel[k], 0, sizeof(cl_mem), cur_pos_buf(dev));
-    err |= clSetKernelArg (dev->kernel[k], 1, sizeof(cl_mem), cur_spd_buf(dev));
-    err |= clSetKernelArg (dev->kernel[k], 2, sizeof(g), &g);
-    err |= clSetKernelArg (dev->kernel[k], 3, sizeof(dev->atom_set.natoms), &dev->atom_set.natoms);
-    err |= clSetKernelArg (dev->kernel[k], 4, sizeof(dev->atom_set.offset), &dev->atom_set.offset);
+    err |= clSetKernelArg (dev->kernel[k], 0, sizeof(cl_mem), cur_spd_buf(dev));
+    err |= clSetKernelArg (dev->kernel[k], 1, sizeof(calc_t), &gx);
+    err |= clSetKernelArg (dev->kernel[k], 2, sizeof(calc_t), &gy);
+    err |= clSetKernelArg (dev->kernel[k], 3, sizeof(calc_t), &gz);
+    err |= clSetKernelArg (dev->kernel[k], 4, sizeof(dev->atom_set.natoms), &dev->atom_set.natoms);
+    err |= clSetKernelArg (dev->kernel[k], 5, sizeof(dev->atom_set.offset), &dev->atom_set.offset);
     check(err, "Failed to set kernel arguments: %s", kernel_name(k));
 
     global = ROUND(dev->atom_set.natoms);             // One thread per atom
     local = MIN(dev->tile_size, dev->max_workgroup_size);
 
+    
     err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, NULL,
 				  &global, &local, 0, NULL, prof_event_ptr(dev,k));
     check(err, "Failed to exec kernel: %s\n", kernel_name(k));
@@ -304,7 +317,7 @@ static void box_sort(sotl_device_t *dev, const unsigned begin,
 
   global = ROUND(end) - (begin & (~(dev->tile_size - 1)));
   local = MIN(dev->tile_size, dev->max_workgroup_size);
-
+  
   err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, NULL, &global, &local, 0,
 				NULL, prof_event_ptr(dev,k));
   check(err, "Failed to exec kernel: %s\n", kernel_name(k));
@@ -403,99 +416,88 @@ void growing_ghost(sotl_device_t *dev)
 
 #endif
 
-    void
-resetAnimation (void)
+void resetAnimation (void)
 {
     dy = 0.01;
     factor = 1.05;
     e_step = g_step = 0;
 }
 
+
+/* void scan(sotl_device_t *dev, const unsigned begin, const unsigned end) */
+/* { */
+/*     // TODO */
+/*   if(begin < end) // Silly code to avoid warning */
+/*     dev = NULL; */
+/* } */
+
+
 static void scan_down_step(sotl_device_t *dev, cl_mem *buffer_base,
 			   int nvalues, int offset_in, int offset_out)
 {
-    int k = KERNEL_SCAN_DOWN_STEP;
-
-    int err = CL_SUCCESS;
-    err |= clSetKernelArg (dev->kernel[k], 0, sizeof(cl_mem), buffer_base);
-    err |= clSetKernelArg (dev->kernel[k], 1, sizeof(offset_in), &offset_in);
-    err |= clSetKernelArg (dev->kernel[k], 2, sizeof(cl_mem), &dev->calc_offset_buffer);
-    err |= clSetKernelArg (dev->kernel[k], 3, sizeof(offset_out), &offset_out);
-    err |= clSetKernelArg (dev->kernel[k], 4, sizeof(nvalues), &nvalues);
-    check (err, "Failed to set kernel arguments: %s", kernel_name(k));
-
-    size_t global, local;
-    int vtc = nvalues / (SCAN_WG_SIZE * 2) + (nvalues % (SCAN_WG_SIZE * 2) ? 1 : 0);
-    local = SCAN_WG_SIZE;
-    global = local * vtc;
-
-    err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, 0, &global, &local, 0,
-				  NULL, prof_event_ptr(dev,k));
-    check(err, "Failed to exec kernel: %s\n", kernel_name(k));
+  int k = KERNEL_SCAN_DOWN_STEP;
+  int err = CL_SUCCESS;
+  err |= clSetKernelArg (dev->kernel[k], 0, sizeof(cl_mem), buffer_base);
+  err |= clSetKernelArg (dev->kernel[k], 1, sizeof(offset_in), &offset_in);
+  err |= clSetKernelArg (dev->kernel[k], 2, sizeof(cl_mem), &dev->calc_offset_buffer);
+  err |= clSetKernelArg (dev->kernel[k], 3, sizeof(offset_out), &offset_out);
+  err |= clSetKernelArg (dev->kernel[k], 4, sizeof(nvalues), &nvalues);
+  check (err, "Failed to set kernel arguments: %s", kernel_name(k));
+  size_t global, local;
+  int vtc = nvalues / (SCAN_WG_SIZE * 2) + (nvalues % (SCAN_WG_SIZE * 2) ? 1 : 0);
+  local = SCAN_WG_SIZE;
+  global = local * vtc;
+  err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, 0, &global, &local, 0,
+				NULL, prof_event_ptr(dev,k));
+  check(err, "Failed to exec kernel: %s\n", kernel_name(k));
 }
-
 static int exec_scan_kernel(sotl_device_t *dev, cl_mem *buffer_in,
 			    int offset_in, int offset_out, int nvalues,
 			    cl_event *event)
 {
-    int vtc;  
-
-    int k = KERNEL_SCAN;
-    int err = CL_SUCCESS;
-
-    err |= clSetKernelArg (dev->kernel[k], 0, sizeof(cl_mem), buffer_in);
-    err |= clSetKernelArg (dev->kernel[k], 1, sizeof(offset_in), &offset_in);
-    err |= clSetKernelArg (dev->kernel[k], 2, sizeof(cl_mem), &dev->calc_offset_buffer);
-    err |= clSetKernelArg (dev->kernel[k], 3, sizeof(offset_out), &offset_out);
-    err |= clSetKernelArg (dev->kernel[k], 4, sizeof(nvalues), &nvalues);
-    check (err, "Failed to set kernel arguments: %s", kernel_name(k));
-
-    vtc = nvalues / (SCAN_WG_SIZE * 2) + (nvalues % (SCAN_WG_SIZE * 2) ? 1 : 0);
-
-    size_t local, global;
-
-    local = SCAN_WG_SIZE;
-    global = local * vtc;
-
-    err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, 0, &global, &local, 0,
-				  NULL, event);
-    check(err, "Failed to exec kernel: %s\n", kernel_name(k));
-
-    return vtc;
+  int vtc;
+  int k = KERNEL_SCAN;
+  int err = CL_SUCCESS;
+  err |= clSetKernelArg (dev->kernel[k], 0, sizeof(cl_mem), buffer_in);
+  err |= clSetKernelArg (dev->kernel[k], 1, sizeof(offset_in), &offset_in);
+  err |= clSetKernelArg (dev->kernel[k], 2, sizeof(cl_mem), &dev->calc_offset_buffer);
+  err |= clSetKernelArg (dev->kernel[k], 3, sizeof(offset_out), &offset_out);
+  err |= clSetKernelArg (dev->kernel[k], 4, sizeof(nvalues), &nvalues);
+  check (err, "Failed to set kernel arguments: %s", kernel_name(k));
+  vtc = nvalues / (SCAN_WG_SIZE * 2) + (nvalues % (SCAN_WG_SIZE * 2) ? 1 : 0);
+  size_t local, global;
+  local = SCAN_WG_SIZE;
+  global = local * vtc;
+  err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, 0, &global, &local, 0,
+				NULL, event);
+  check(err, "Failed to exec kernel: %s\n", kernel_name(k));
+  return vtc;
 }
-
 static void scan_values(sotl_device_t *dev, int nvalues, int offset_in, int offset_out)
 {
-
   int vtc = exec_scan_kernel (dev, &dev->calc_offset_buffer, offset_in, offset_out, nvalues, NULL);
-
-    if (vtc > 1)
+  if (vtc > 1)
     {
-        int new_offset_in = offset_out;
-        int new_offset_out = ALRND(16, offset_out + vtc);
-
-        scan_values (dev, vtc, new_offset_in, new_offset_out);
-        scan_down_step (dev, &dev->calc_offset_buffer, nvalues, offset_in, offset_out);
+      int new_offset_in = offset_out;
+      int new_offset_out = ALRND(16, offset_out + vtc);
+      scan_values (dev, vtc, new_offset_in, new_offset_out);
+      scan_down_step (dev, &dev->calc_offset_buffer, nvalues, offset_in, offset_out);
     }
 }
-
 void scan(sotl_device_t *dev, const unsigned begin, const unsigned end)
 {
-    int offset_in = begin;
-    int offset_out = begin;
-    int nvalues = end - begin;
-
-    int vtc = exec_scan_kernel(dev, &dev->box_buffer, offset_in, offset_out,
-                               nvalues, prof_event_ptr(dev, KERNEL_SCAN));
-
-    // Test if we need to execute another scan
-    if (vtc > 1)
-    { 
-        int offset_in = begin;
-        int offset_out = ALRND(16, begin + vtc);
-
-        scan_values(dev, vtc, offset_in, offset_out);
-        scan_down_step(dev, &dev->box_buffer, nvalues, begin, begin);
+  int offset_in = begin;
+  int offset_out = begin;
+  int nvalues = end - begin;
+  int vtc = exec_scan_kernel(dev, &dev->box_buffer, offset_in, offset_out,
+			     nvalues, prof_event_ptr(dev, KERNEL_SCAN));
+  // Test if we need to execute another scan
+  if (vtc > 1)
+    {
+      int offset_in = begin;
+      int offset_out = ALRND(16, begin + vtc);
+      scan_values(dev, vtc, offset_in, offset_out);
+      scan_down_step(dev, &dev->box_buffer, nvalues, begin, begin);
     }
 }
 

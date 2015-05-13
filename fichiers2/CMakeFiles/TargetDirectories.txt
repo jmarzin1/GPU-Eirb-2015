@@ -1,2 +1,0 @@
-/net/cremi/jarnault/espaces/travail/Projet/fichiers/CMakeFiles/atoms.dir
-/net/cremi/jarnault/espaces/travail/Projet/fichiers/libsotl/CMakeFiles/sotl.dir
