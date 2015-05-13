@@ -6,6 +6,7 @@
 /**
  * A structure to represent domains.
  */
+  
 typedef struct domain {
   calc_t min_border[3], max_border[3];    /**< min and max border pos in x, y, z */
   calc_t min_ext[3], max_ext[3];          /**< min and max pos in x, y, z */
@@ -14,7 +15,6 @@ typedef struct domain {
   unsigned nb_subdomains;                 /**< number of sub domains. */
   struct domain **subdomains;             /**< array of sub domainbs. */
   struct atom_set *atom_set;             /**< atom set. */
-  unsigned* boites;
 } sotl_domain_t;
 
 

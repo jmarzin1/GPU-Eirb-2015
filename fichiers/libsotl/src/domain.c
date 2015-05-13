@@ -45,11 +45,11 @@ void domain_init(sotl_domain_t *dom, const calc_t x_min, const calc_t y_min,
 
         /* Compute total number of boxes. */
         dom->total_boxes *= dom->boxes[i];
-	dom->boites = malloc(sizeof(int*)*dom->total_boxes);
-	#pragma omp parallel for
-	for (unsigned int i = 0; i <  dom->total_boxes; i++) {
-	  dom->boites[i]=0;
-	}
+	//dom->boites = malloc(sizeof(int*)*dom->total_boxes);
+	//#pragma omp parallel for
+	//for (unsigned int i = 0; i <  dom->total_boxes; i++) {
+	//  dom->boites[i]=0;
+	//}
     }
 }
 

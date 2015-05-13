@@ -17,6 +17,72 @@ static int *atom_state = NULL;
 
 #define SHOCK_PERIOD  50
 
+/************
+ ** Boites **
+ ************/
+
+
+struct box {
+  unsigned atoms[100000];
+  unsigned size;
+  unsigned nb_atoms;
+};
+
+
+struct box boxes[1000];
+unsigned int nb_boxes;
+unsigned int indY, indZ;
+
+
+int init_boxes(){
+  sotl_atom_set_t *set = get_global_atom_set();
+  sotl_domain_t *domain = get_global_domain();
+
+  nb_boxes = domain->boxes[0] * domain->boxes[1] * domain->boxes[2];
+  unsigned i;
+  indY = domain->boxes[0];
+  indZ = domain->boxes[0] * domain->boxes[1];
+
+  int nb_init = set->natoms;
+  printf("%d %d\n", set->natoms, nb_init);
+  for(i=0; i<nb_boxes;i++){
+    boxes[i].nb_atoms = 0;
+  }
+  
+  return EXIT_SUCCESS;
+}
+
+void sort_boxes(sotl_atom_set_t *set){
+  int pos;
+  sotl_domain_t *domain = get_global_domain();
+
+  for(unsigned i=0; i<nb_boxes;i++){
+    boxes[i].nb_atoms = 0;
+  }
+  int box_x, box_y, box_z;
+  for(unsigned atom = 0; atom < set->natoms; atom++){
+  
+    box_x = (set->pos.x[atom] / BOX_SIZE);
+  
+    box_y = (set->pos.x[set->offset + atom] / BOX_SIZE);
+  
+    box_z = (set->pos.x[set->offset * 2 + atom] / BOX_SIZE);
+    if(box_x >= 0 && box_y >= 0 && box_z >= 0 && box_x < domain->boxes[0] && box_y < domain->boxes[1] && box_z < domain->boxes[2]){
+  
+      pos = box_x + indY*box_y + indZ*box_z;
+  
+      boxes[pos].nb_atoms++;
+  
+      /* if(boxes[pos].nb_atoms >= boxes[pos].size){ */
+      /*   boxes[pos].size *= 2; */
+      /*   boxes[pos].atoms = realloc(boxes[pos].atoms, boxes[pos].size); */
+      /* } */
+      boxes[pos].atoms[boxes[pos].nb_atoms-1] = atom;
+  
+    }
+  }
+}
+
 // Update OpenGL Vertex Buffer Object
 //
 static void omp_update_vbo (sotl_device_t *dev)
@@ -106,6 +172,14 @@ static calc_t squared_distance (sotl_atom_set_t *set, unsigned p1, unsigned p2)
   return dx * dx + dy * dy + dz * dz;
 }
 
+static calc_t z_distance (sotl_atom_set_t *set, unsigned p1, unsigned p2) {
+  calc_t *pos1 = set->pos.x + p1,
+    *pos2 = set->pos.x + p2;
+  calc_t dz = pos2[set->offset*2] - pos1[set->offset*2];
+  return dz * dz;
+}
+
+
 static calc_t lennard_jones (calc_t r2)
 {
   calc_t rr2 = 1.0 / r2;
@@ -125,11 +199,10 @@ static void omp_force (sotl_device_t *dev)
   for (unsigned current = 0; current < set->natoms; current++) {
     calc_t force[3] = { 0.0, 0.0, 0.0 };
 
-    #pragma omp parallel for
     for (unsigned other = 0; other < set->natoms; other++)
       if (current != other) {
 	calc_t sq_dist = squared_distance (set, current, other);
-
+	
 	if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	  calc_t intensity = lennard_jones (sq_dist);
 
@@ -148,11 +221,60 @@ static void omp_force (sotl_device_t *dev)
   }
 }
 
+static void omp_force3 (sotl_device_t *dev)
+{
+  sotl_atom_set_t *set = &dev->atom_set;
+  sotl_domain_t *domain = &dev->domain;
+#pragma omp for
+  for (unsigned current = 0; current < set->natoms; current++) {
+
+    calc_t force[3] = { 0.0, 0.0, 0.0 };
+    
+    int x_box = (set->pos.x[current] / BOX_SIZE);
+    int y_box = (set->pos.x[set->offset + current] / BOX_SIZE);
+    int z_box = (set->pos.x[set->offset * 2 + current] / BOX_SIZE);
+    
+    struct box * b;
+
+    unsigned other;
+
+    for(int i = x_box-1; i <= x_box+1; i++){
+      for(int j = y_box-1; j <= y_box+1; j++){
+	for(int k = z_box-1; k <= z_box+1; k++){
+	  if(i >= 0 && j >= 0 && k >= 0 && i < domain->boxes[0] && j < domain->boxes[1] && k < domain->boxes[2]){
+	    b = &boxes[i+indY*j+indZ*k];
+	    for(int l = 0; l < b->nb_atoms; l++){
+	      other = b->atoms[l];
+	      if(other != current){
+		calc_t sq_dist = squared_distance (set, current, other);
+		if (sq_dist < LENNARD_SQUARED_CUTOFF) {
+		  calc_t intensity = lennard_jones (sq_dist);
+		  force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
+		  force[1] += intensity * (set->pos.x[set->offset + current] -
+					   set->pos.x[set->offset + other]);
+		  force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
+					   set->pos.x[set->offset * 2 + other]);
+		}
+	      }	 
+	    }
+	  }
+	}
+      }
+    }
+    set->speed.dx[current] += force[0];
+    set->speed.dx[set->offset + current] += force[1];
+    set->speed.dx[set->offset * 2 + current] += force[2];
+  }
+}
+
+
 
 // Main simulation function
 //
 void omp_one_step_move (sotl_device_t *dev)
 {
+  sotl_atom_set_t *set = &dev->atom_set;
+  sort_boxes(set);
   // Apply gravity force
   //
   if (gravity_enabled)
@@ -160,9 +282,13 @@ void omp_one_step_move (sotl_device_t *dev)
 
   // Compute interactions between atoms
   //
-  if (force_enabled)
-    omp_force (dev);
-
+  if (force_enabled) {
+  
+    //atom_set_sort(set);
+    //omp_force2(dev);
+    omp_force3 (dev);
+   
+  }
   // Bounce on borders
   //
   if(borders_enabled)

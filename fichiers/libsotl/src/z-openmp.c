@@ -107,8 +107,8 @@ static calc_t lennard_jones (calc_t r2)
 static void omp_force (sotl_device_t *dev)
 {
   sotl_atom_set_t */*restrict*/ set = &dev->atom_set;
-
-#pragma omp for 
+  atom_set_sort(set);
+#pragma omp for
   for (unsigned current = 0; current < set->natoms; current++) {
     calc_t force[3] = { 0.0, 0.0, 0.0 };
 
