@@ -1,0 +1,2 @@
+/net/cremi/jarnault/espaces/travail/Projet/GPU-Eirb-2015/fichiers2/build/CMakeFiles/atoms.dir
+/net/cremi/jarnault/espaces/travail/Projet/GPU-Eirb-2015/fichiers2/build/libsotl/CMakeFiles/sotl.dir

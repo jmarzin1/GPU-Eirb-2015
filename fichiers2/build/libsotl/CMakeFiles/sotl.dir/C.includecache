@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../libsotl/include/default_defines.h
+sotl_internal.h
+../libsotl/include/sotl_internal.h
+
+../libsotl/include/kernel_list.h
+
+../libsotl/include/sotl.h
+
+../libsotl/include/sotl_internal.h
+sotl.h
+../libsotl/include/sotl.h
+
+/net/cremi/jarnault/espaces/travail/Projet/GPU-Eirb-2015/fichiers2/libsotl/src/kernel_list.c
+default_defines.h
+/net/cremi/jarnault/espaces/travail/Projet/GPU-Eirb-2015/fichiers2/libsotl/src/default_defines.h
+kernel_list.h
+/net/cremi/jarnault/espaces/travail/Projet/GPU-Eirb-2015/fichiers2/libsotl/src/kernel_list.h
+
