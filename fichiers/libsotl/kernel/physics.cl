@@ -204,7 +204,9 @@ __kernel
 void gravity (__global calc_t * speed, calc_t gx, calc_t gy, calc_t gz,
 	      unsigned natoms, unsigned offset)
 {
-  // TODO
+	unsigned index = get_global_id (0);	
+	const calc_t g = 0.005;
+	speed[index+offset]-=g;	
 }
 
 
