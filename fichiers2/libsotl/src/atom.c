@@ -191,6 +191,41 @@ void atom_set_sort(sotl_atom_set_t *set)
     heap_sort(set, set->natoms);
 }
 
+
+void bubble_sort_parallel(sotl_atom_set_t *set, const  int N)
+	//#pragma omp parallel private(step)
+	{
+		int step, i ;
+		for (step = N; step > 0; step--) {
+			if (step % 2 == 0) {
+	#pragma omp for private(i)
+				for (i = 0; i < N-1; i += 2)
+					if (set->pos.z[i] > set->pos.z[i+1]) {
+						SWAP_ATOM(i, i+1);
+					}
+			} else {
+	#pragma omp for private(i)
+				for (i = 1; i < N-1; i += 2)
+						if (set->pos.z[i] > set->pos.z[i+1]) {
+							SWAP_ATOM(i, i+1);
+						} 
+			} 
+		}
+
+	}
+
+
+
+void atom_set_sort_parallel(sotl_atom_set_t *set)
+{
+    /* Sort atoms along z-axis. */
+    bubble_sort_parallel(set, set->natoms);
+}
+
+
+
+
+
 #ifdef HAVE_LIBGL
 void atom_build (int natoms, sotl_atom_pos_t * pos_vec)
 {

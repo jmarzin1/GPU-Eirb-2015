@@ -127,35 +127,47 @@ static calc_t lennard_jones (calc_t r2)
 static void omp_force (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
-  atom_set_sort(set);	
+  //atom_set_sort(set);	
+  atom_set_sort_parallel(set);	
 #pragma omp parallel for
   for (unsigned current = 0; current < set->natoms; current++) {
     calc_t force[3] = { 0.0, 0.0, 0.0 };
 
 	int other1 = current-1;
 	int other2 = current+1;
-	while (other1 >=0 && squared_distance (set, current, other1) < LENNARD_SQUARED_CUTOFF){
+	while (other1 >=0 && abs(set->pos.z[current] - set->pos.z[other1]) < LENNARD_SQUARED_CUTOFF){
 
-	  calc_t intensity = lennard_jones (squared_distance (set, current, other1));
+		calc_t sq_dist = squared_distance (set, current, other1);
 
-	  force[0] += intensity * (set->pos.x[current] - set->pos.x[other1]);
-	  force[1] += intensity * (set->pos.x[set->offset + current] -
-				   set->pos.x[set->offset + other1]);
-	  force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
-				   set->pos.x[set->offset * 2 + other1]);
-	other1--;
-      }
+		if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 
-	while (other2 < set->natoms && squared_distance (set, current, other2) < LENNARD_SQUARED_CUTOFF){
-	  calc_t intensity = lennard_jones (squared_distance (set, current, other2));
+			calc_t intensity = lennard_jones (squared_distance (set, current, other1));
 
-	  force[0] += intensity * (set->pos.x[current] - set->pos.x[other2]);
-	  force[1] += intensity * (set->pos.x[set->offset + current] -
-				   set->pos.x[set->offset + other2]);
-	  force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
-				   set->pos.x[set->offset * 2 + other2]);
-	other2++;
-      }
+			force[0] += intensity * (set->pos.x[current] - set->pos.x[other1]);
+			force[1] += intensity * (set->pos.x[set->offset + current] -
+						 set->pos.x[set->offset + other1]);
+			force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
+						 set->pos.x[set->offset * 2 + other1]);
+		}
+		other1--;
+  }
+
+	while (other2 < set->natoms && abs(set->pos.z[other2] - set->pos.z[current]) < LENNARD_SQUARED_CUTOFF){
+
+		calc_t sq_dist = squared_distance (set, current, other2);
+
+		if (sq_dist < LENNARD_SQUARED_CUTOFF) {
+
+			calc_t intensity = lennard_jones (squared_distance (set, current, other2));
+
+			force[0] += intensity * (set->pos.x[current] - set->pos.x[other2]);
+			force[1] += intensity * (set->pos.x[set->offset + current] -
+						 set->pos.x[set->offset + other2]);
+			force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
+						 set->pos.x[set->offset * 2 + other2]);
+		}
+		other2++;
+   }
     set->speed.dx[current] += force[0];
     set->speed.dx[set->offset + current] += force[1];
     set->speed.dx[set->offset * 2 + current] += force[2];
