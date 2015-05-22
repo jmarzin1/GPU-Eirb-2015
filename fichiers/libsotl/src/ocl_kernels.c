@@ -423,11 +423,74 @@ void resetAnimation (void)
 }
 
 
+
+static void scan_down_step(sotl_device_t *dev, cl_mem *buffer_base,
+			   int nvalues, int offset_in, int offset_out)
+{
+  int k = KERNEL_SCAN_DOWN_STEP;
+  int err = CL_SUCCESS;
+  err |= clSetKernelArg (dev->kernel[k], 0, sizeof(cl_mem), buffer_base);
+  err |= clSetKernelArg (dev->kernel[k], 1, sizeof(offset_in), &offset_in);
+  err |= clSetKernelArg (dev->kernel[k], 2, sizeof(cl_mem), &dev->calc_offset_buffer);
+  err |= clSetKernelArg (dev->kernel[k], 3, sizeof(offset_out), &offset_out);
+  err |= clSetKernelArg (dev->kernel[k], 4, sizeof(nvalues), &nvalues);
+ check (err, "Failed to set kernel arguments: %s", kernel_name(k));
+ size_t global, local;
+ int vtc = nvalues / (SCAN_WG_SIZE * 2) + (nvalues % (SCAN_WG_SIZE * 2) ? 1 : 0);
+ local = SCAN_WG_SIZE;
+ global = local * vtc;
+ err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, 0, &global, &local, 0,
+			       NULL, prof_event_ptr(dev,k));
+ check(err, "Failed to exec kernel: %s\n", kernel_name(k));
+}
+static int exec_scan_kernel(sotl_device_t *dev, cl_mem *buffer_in,
+			    int offset_in, int offset_out, int nvalues,
+			    cl_event *event)
+{
+  int vtc;
+  int k = KERNEL_SCAN;
+  int err = CL_SUCCESS;
+  err |= clSetKernelArg (dev->kernel[k], 0, sizeof(cl_mem), buffer_in);
+  err |= clSetKernelArg (dev->kernel[k], 1, sizeof(offset_in), &offset_in);
+  err |= clSetKernelArg (dev->kernel[k], 2, sizeof(cl_mem), &dev->calc_offset_buffer);
+  err |= clSetKernelArg (dev->kernel[k], 3, sizeof(offset_out), &offset_out);
+  err |= clSetKernelArg (dev->kernel[k], 4, sizeof(nvalues), &nvalues);
+  check (err, "Failed to set kernel arguments: %s", kernel_name(k));
+  vtc = nvalues / (SCAN_WG_SIZE * 2) + (nvalues % (SCAN_WG_SIZE * 2) ? 1 : 0);
+  size_t local, global;
+  local = SCAN_WG_SIZE;
+  global = local * vtc;
+  err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, 0, &global, &local, 0,
+				NULL, event);
+  check(err, "Failed to exec kernel: %s\n", kernel_name(k));
+  return vtc;
+}
+static void scan_values(sotl_device_t *dev, int nvalues, int offset_in, int offset_out)
+{
+  int vtc = exec_scan_kernel (dev, &dev->calc_offset_buffer, offset_in, offset_out, nvalues, NULL);
+  if (vtc > 1)
+    {
+      int new_offset_in = offset_out;
+      int new_offset_out = ALRND(16, offset_out + vtc);
+      scan_values (dev, vtc, new_offset_in, new_offset_out);
+      scan_down_step (dev, &dev->calc_offset_buffer, nvalues, offset_in, offset_out);
+    }
+}
 void scan(sotl_device_t *dev, const unsigned begin, const unsigned end)
 {
-    // TODO
-  if(begin < end) // Silly code to avoid warning
-    dev = NULL;
+  int offset_in = begin;
+  int offset_out = begin;
+  int nvalues = end - begin;
+  int vtc = exec_scan_kernel(dev, &dev->box_buffer, offset_in, offset_out,
+			     nvalues, prof_event_ptr(dev, KERNEL_SCAN));
+  // Test if we need to execute another scan
+  if (vtc > 1)
+    {
+      int offset_in = begin;
+      int offset_out = ALRND(16, begin + vtc);
+      scan_values(dev, vtc, offset_in, offset_out);
+      scan_down_step(dev, &dev->box_buffer, nvalues, begin, begin);
+    }
 }
 
 void null_kernel (sotl_device_t *dev)
