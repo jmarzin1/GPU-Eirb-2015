@@ -111,55 +111,42 @@ static void omp_force (sotl_device_t *dev)
 #pragma omp for
   for (unsigned current = 0; current < set->natoms; current++) {
     calc_t force[3] = { 0.0, 0.0, 0.0 };
-
-    //#pragma omp simd 
+    //#pragma omp simd
     for (unsigned other = current-1; other < set->natoms; other--)
       {
-
 	if (z_distance(set, current, other) > LENNARD_SQUARED_CUTOFF)
 	  break;
 	calc_t sq_dist = squared_distance (set, current, other);
-
 	if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	  calc_t intensity = lennard_jones (sq_dist);
-	  
 	  calc_t * /*restrict*/ posx = set->pos.x ;
-
 	  force[0] += intensity * (posx[current] - posx[other]);
 	  force[1] += intensity * (posx[set->offset + current] -
 				   posx[set->offset + other]);
 	  force[2] += intensity * (posx[set->offset * 2 + current] -
 				   posx[set->offset * 2 + other]);
 	}
-
       }
-    //#pragma omp simd 
+    //#pragma omp simd
     for (unsigned other = current + 1; other < set->natoms; other++)
-      {	
+      {
 	if (z_distance(set, current, other) > LENNARD_SQUARED_CUTOFF)
 	  break;
-	
-	
 	calc_t sq_dist = squared_distance (set, current, other);
-
 	if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	  calc_t intensity = lennard_jones (sq_dist);
-	  
 	  calc_t * /*restrict*/ posx = set->pos.x ;
-
 	  force[0] += intensity * (posx[current] - posx[other]);
 	  force[1] += intensity * (posx[set->offset + current] -
 				   posx[set->offset + other]);
 	  force[2] += intensity * (posx[set->offset * 2 + current] -
 				   posx[set->offset * 2 + other]);
 	}
-
-      }   
+      }
     set->speed.dx[current] += force[0];
     set->speed.dx[set->offset + current] += force[1];
     set->speed.dx[set->offset * 2 + current] += force[2];
   }
-
   
 }
 

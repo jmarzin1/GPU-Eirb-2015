@@ -116,6 +116,11 @@ void atom_set_free(sotl_atom_set_t *set);
  */
 void atom_set_sort(sotl_atom_set_t *set);
 
+/**
+ * Sort atoms along z-axis using a bubble sort algorithm.
+ */
+void atom_set_sort_2(sotl_atom_set_t *set);
+
 void atom_build (int natoms, sotl_atom_pos_t* pos_vec);
 
 /**
