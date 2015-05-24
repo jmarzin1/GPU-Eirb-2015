@@ -10,22 +10,8 @@
 static int *atom_state = NULL;
 #ifdef HAVE_LIBGL
 #define SHOCK_PERIOD 50
-/* float color[16][3] = {{ 0, 0, 1}, */
-/* 		      { 0, 1, 0}, */
-/* 		      { 0, 1, 1}, */
-/* 		      { 1, 0, 0}, */
-/* 		      { 1, 0, 1}, */
-/* 		      { 1, 1, 0}, */
-/* 		      { 1, 1, 1}, */
-/* 		      { 0, 0, 0.5}, */
-/* 		      { 0, 0.5, 0}, */
-/* 		      { 0, 0.5, 0.5}, */
-/* 		      { 0.5, 0, 0}, */
-/* 		      { 0.5, 0, 0.5}, */
-/* 		      { 0.5, 0.5, 0}, */
-/* 		      { 0.5, 0.5, 0.5}, */
-/* 		      { 1, 0, .62}, */
-/* 		      { 0, .54, .2}}; */
+
+
 struct box {
   unsigned * atoms; //Array of atom index in the box
   unsigned size; //Size max of the array
@@ -227,14 +213,17 @@ static void omp_force_z (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
   atom_set_sort(set);
- 
+  calc_t sq_dist;
+
+
 #pragma omp for
   for (unsigned current = 0; current < set->natoms; current++) {
     calc_t force[3] = { 0.0, 0.0, 0.0 };
-    unsigned other = current+1;
-    calc_t sq_dist;
     
-    while (  (other < set->natoms) && (abs(set->pos.z[current] - set->pos.z[other]) < LENNARD_SQUARED_CUTOFF)){
+    unsigned other = current+1;
+   
+    
+    while (  (other < set->natoms) && (abs(set->pos.z[other] - set->pos.z[current]) < LENNARD_SQUARED_CUTOFF)){
       sq_dist = squared_distance (set, current, other);
       if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	calc_t intensity = lennard_jones (sq_dist);
@@ -247,13 +236,12 @@ static void omp_force_z (sotl_device_t *dev)
       other++;
     }
     
-    if (current) {
-      other=current-1;
-    }
-    else other = 0;
-    while ( (other > 0) && (abs(set->pos.z[current] - set->pos.z[other]) < LENNARD_SQUARED_CUTOFF)){
-      sq_dist = squared_distance (set, current, other);
     
+
+    other=current-1;
+    while ( (other >= 0) && (abs(set->pos.z[current] - set->pos.z[other]) < LENNARD_SQUARED_CUTOFF)){
+      sq_dist = squared_distance (set, current, other);
+      
       if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	calc_t intensity = lennard_jones (sq_dist);
 	force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
