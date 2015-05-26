@@ -22,7 +22,6 @@ static int *atom_state = NULL;
 static void omp_update_vbo (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
-  sotl_domain_t *domain = &dev->domain;
 
    for (unsigned n = 0; n < set->natoms; n++) {
     vbo_vertex[n*3 + 0] = set->pos.x[n];
@@ -124,6 +123,9 @@ static calc_t lennard_jones (calc_t r2)
   return 24 * LENNARD_EPSILON * rr2 * (2.0f * r6 * r6 - r6);
 }
 
+
+
+
 static void omp_force (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
@@ -152,7 +154,7 @@ static void omp_force (sotl_device_t *dev)
 		other1--;
   }
 
-	while (other2 < set->natoms && abs(set->pos.z[other2] - set->pos.z[current]) < LENNARD_SQUARED_CUTOFF){
+	while (other2 < (int) set->natoms && abs(set->pos.z[other2] - set->pos.z[current]) < LENNARD_SQUARED_CUTOFF){
 
 		calc_t sq_dist = squared_distance (set, current, other2);
 
@@ -180,7 +182,7 @@ static void omp_force_box (sotl_device_t *dev)
 {
    sotl_domain_t *dom = &dev->domain;
   sotl_atom_set_t *set = &dev->atom_set;
-  int * boxes = atom_sort_boxes(dev);
+  int * boxes = atom_sort_boxes(set, dom);
   int num_box_current, num_box_x, num_box_y ;
   num_box_x = dom->boxes[0];
   num_box_y = dom->boxes[1];
@@ -189,33 +191,43 @@ static void omp_force_box (sotl_device_t *dev)
   int other_box;
   int other;
   
-#pragma omp parallel for
+	//printf("\nGO COMPARAISON \n\n");
+
+#pragma omp for schedule(guided)
   for (unsigned current = 0; current < set->natoms; current++) {
     calc_t force[3] = { 0.0, 0.0, 0.0 };
 
     num_box_current = atom_get_num_box(dom, set->pos.x[current], set->pos.y[current], set->pos.z[current], BOX_SIZE_INV);
+
+	//printf(" current : %lf, %lf, %lf et box : %d\n", set->pos.x[current], set->pos.y[current], set->pos.z[current], num_box_current);
     
     for (i = -1; i < 2 ; i++){
       for (j = -1; j < 2 ; j++){
 	for (k = -1; k < 2 ; k++){
+
 	  other_box = num_box_current + i + (j * num_box_x) + (k * num_box_x * num_box_y );
-	  if (other_box >= 0 && other_box < dom->total_boxes){
+	//printf("other bb %d\n", other_box);	  
+	if (other_box >= 0 && other_box < (int) dom->total_boxes){
 	    if (other_box == 0){
 	      deb = 0;
 	    }
 	    else {
 	      deb = boxes[other_box-1];
 	    }
-	    for (other = deb ; other < boxes[other_box] -1; other++){
+	    for (other = deb ; other < boxes[other_box] ; other++){
+
 	      calc_t sq_dist = squared_distance (set, current, other);
-	      calc_t intensity = lennard_jones (squared_distance (set, current, other));
-	  
-	      force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
-	      force[1] += intensity * (set->pos.x[set->offset + current] -
-				       set->pos.x[set->offset + other]);
-	      force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
-				       set->pos.x[set->offset * 2 + other]);
-	 
+		if ((int) current != other && sq_dist < LENNARD_SQUARED_CUTOFF) {
+			//printf("===========================> NOOOOOOOOOOO\n"); 
+			//printf(" other : %lf, %lf, %lf et box : %d\n", set->pos.x[other], set->pos.y[other], set->pos.z[other], other_box);
+		      calc_t intensity = lennard_jones (sq_dist);
+		  
+		      force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
+		      force[1] += intensity * (set->pos.x[set->offset + current] -
+					       set->pos.x[set->offset + other]);
+		      force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
+					       set->pos.x[set->offset * 2 + other]);
+	 	}
 	    }
 	  }
 	}
@@ -240,7 +252,7 @@ void omp_one_step_move (sotl_device_t *dev)
   // Compute interactions between atoms
   //
   if (force_enabled)
-    omp_force (dev);
+    omp_force_box (dev);
 
   // Bounce on borders
   //

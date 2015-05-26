@@ -22,7 +22,6 @@ static int *atom_state = NULL;
 static void seq_update_vbo (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
-  sotl_domain_t *domain = &dev->domain;
 
    for (unsigned n = 0; n < set->natoms; n++) {
     vbo_vertex[n*3 + 0] = set->pos.x[n];

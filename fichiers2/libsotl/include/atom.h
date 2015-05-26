@@ -116,6 +116,11 @@ void atom_set_free(sotl_atom_set_t *set);
  */
 void atom_set_sort(sotl_atom_set_t *set);
 
+
+void atom_set_sort_parallel(sotl_atom_set_t *set);
+
+int * atom_sort_boxes(sotl_atom_set_t *set, sotl_domain_t *domain);
+
 void atom_build (int natoms, sotl_atom_pos_t* pos_vec);
 
 /**

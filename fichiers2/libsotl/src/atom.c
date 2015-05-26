@@ -192,10 +192,11 @@ void atom_set_sort(sotl_atom_set_t *set)
 }
 
 
-void bubble_sort_parallel(sotl_atom_set_t *set, const  int N)
-	//#pragma omp parallel private(step)
-	{
+void bubble_sort_parallel(sotl_atom_set_t *set, const  int N){
+
+	
 		int step, i ;
+	//#pragma omp parallel private(step)
 		for (step = N; step > 0; step--) {
 			if (step % 2 == 0) {
 	#pragma omp for private(i)
@@ -223,21 +224,22 @@ void atom_set_sort_parallel(sotl_atom_set_t *set)
 }
 
 
-int * atom_sort_boxes(sotl_device_t *dev)
+int * atom_sort_boxes(sotl_atom_set_t *set, sotl_domain_t *domain)
 {
-  sotl_atom_set_t *set = &dev->atom_set;
-  sotl_domain_t *domain = &dev->domain;
+//  sotl_atom_set_t *set = &dev->atom_set;
+//  sotl_domain_t *domain = &dev->domain;
 
 	//int out[set->natoms];
 
 	int * boxes = atom_set_box_count(domain, set);
 
-	for (int i = 1; i < domain -> total_boxes; i++){
+
+	for (int i = 1; i < (int) domain -> total_boxes; i++){
 	  boxes[i] += boxes[i-1];
 	}
 	
 	int count_boxes[domain->total_boxes];
-	for (int i = 0 ; i < domain->total_boxes ; i++){
+	for (int i = 0 ; i < (int) domain->total_boxes ; i++){
 		count_boxes[i] = 0;
 	}
 
@@ -246,7 +248,7 @@ int * atom_sort_boxes(sotl_device_t *dev)
 	int next_box = boxes[0];
 	int num_box_tmp;
 	
-	while (pos_set < set->natoms){
+	while (pos_set < (int) set->natoms){
 	  while (pos_set < next_box){
 	    num_box_tmp = atom_get_num_box(domain, set->pos.x[pos_set], set->pos.y[pos_set], set->pos.z[pos_set], BOX_SIZE_INV);
 	    if( num_box_tmp != num_box){
@@ -259,7 +261,7 @@ int * atom_sort_boxes(sotl_device_t *dev)
 	    }
 	  }
 	  num_box ++;
-	  if(num_box < domain-> total_boxes){
+	  if(num_box < (int) domain-> total_boxes){
 	    next_box = boxes[num_box];
 	    pos_set += count_boxes[num_box];
 	  }	
@@ -292,7 +294,7 @@ int atom_get_num_box(const sotl_domain_t *dom, const calc_t x, const calc_t y,
     box_id =  box_z * dom->boxes[0] * dom->boxes[1] +
               box_y * dom->boxes[0] +
               box_x;
-
+	//printf("%d + %d %d %d + %lf %lf %lf\n", box_id, box_x, box_y, box_z, x, y, z);
     assert(box_id >= 0 && (unsigned)box_id < dom->total_boxes);
     return box_id;
 }
@@ -306,7 +308,10 @@ int *atom_set_box_count(const sotl_domain_t *dom, const sotl_atom_set_t *set)
     if (!(boxes = calloc(1, size)))
         return NULL;
 
+	//printf("\n\n\n COUNT \n\n\n");
+
     for (unsigned i = 0; i < set->natoms; i++) {
+		//printf("%d et %d\n", (int) set->natoms, i);
       int box_id = atom_get_num_box(dom, set->pos.x[i], set->pos.y[i], set->pos.z[i],
 				    BOX_SIZE_INV);
 
