@@ -62,7 +62,7 @@ static void heap_sort(sotl_atom_set_t *set, const unsigned count)
 }
 
 static void bubble_sort(sotl_atom_set_t *set, const unsigned count) {
-  int i,step;
+  unsigned i,step;
 #pragma omp parallel private(step)
   {
     for (step = count; step > 0; step--) {
