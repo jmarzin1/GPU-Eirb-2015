@@ -3,12 +3,16 @@
 #include "device.h"
 #include "openmp.h"
 #include "sotl.h"
+
 #ifdef HAVE_LIBGL
 #include "vbo.h"
 #endif
+
 #include <stdio.h>
 static int *atom_state = NULL;
+
 #ifdef HAVE_LIBGL
+
 #define SHOCK_PERIOD 50
 
 
@@ -91,6 +95,16 @@ static void omp_update_vbo (sotl_device_t *dev)
     vbo_vertex[n*3 + 0] = set->pos.x[n];
     vbo_vertex[n*3 + 1] = set->pos.y[n];
     vbo_vertex[n*3 + 2] = set->pos.z[n];
+    
+    if(atom_state[n]){
+      float ratio = (float)atom_state[n]/SHOCK_PERIOD;
+      
+      vbo_color[n*3 + 0] = (1.0 - ratio) * atom_color[0].R + ratio * 1.0;
+      vbo_color[n*3 + 1] = (1.0 - ratio) * atom_color[0].G + ratio * 0.0;
+      vbo_color[n*3 + 2] = (1.0 - ratio) * atom_color[0].B + ratio * 0.0;
+      
+      atom_state[n]--;
+    }
   }
 }
 
@@ -129,19 +143,16 @@ static void omp_bounce (sotl_device_t *dev)
 #pragma omp for
   for (unsigned n = 0; n < set->natoms; n++) {
     if (set->pos.x[n] < domain->min_ext[0] || set->pos.x[n] > domain->max_ext[0]){
-      /* atom_state[n] = SHOCK_PERIOD; */
-      set->speed.dx[n] = -set->speed.dx[n];
-      //set->speed.dx[n] *= 0.9;
+      atom_state[n] = SHOCK_PERIOD; 
+      set->speed.dx[n] *= -0.9;
     }
     if (set->pos.y[n] < domain->min_ext[1] || set->pos.y[n] > domain->max_ext[1]){
-      /* atom_state[n] = SHOCK_PERIOD; */
-      set->speed.dy[n] = -set->speed.dy[n];
-      //set->speed.dy[n] *= 0.9;
+      atom_state[n] = SHOCK_PERIOD;
+      set->speed.dy[n] *= -0.9;
     }
     if (set->pos.z[n] < domain->min_ext[2] || set->pos.z[n] > domain->max_ext[2]){
-      /* atom_state[n] = SHOCK_PERIOD; */
-      set->speed.dz[n] = -set->speed.dz[n];
-      //set->speed.dz[n] *= 0.9;
+      atom_state[n] = SHOCK_PERIOD;
+      set->speed.dz[n] *= -0.9;
     }
   }
 }
@@ -149,11 +160,13 @@ static void omp_bounce (sotl_device_t *dev)
 
 static calc_t squared_distance (sotl_atom_set_t *set, unsigned p1, unsigned p2)
 {
-  calc_t *pos1 = set->pos.x + p1,
+ calc_t *pos1 = set->pos.x + p1,
     *pos2 = set->pos.x + p2;
+
   calc_t dx = pos2[0] - pos1[0],
-    dy = pos2[set->offset] - pos1[set->offset],
-    dz = pos2[set->offset*2] - pos1[set->offset*2];
+         dy = pos2[set->offset] - pos1[set->offset],
+         dz = pos2[set->offset*2] - pos1[set->offset*2];
+
   return dx * dx + dy * dy + dz * dz;
 }
 
@@ -161,8 +174,10 @@ static calc_t lennard_jones (calc_t r2)
 {
   calc_t rr2 = 1.0 / r2;
   calc_t r6;
+
   r6 = LENNARD_SIGMA * LENNARD_SIGMA * rr2;
   r6 = r6 * r6 * r6;
+
   return 24 * LENNARD_EPSILON * rr2 * (2.0f * r6 * r6 - r6);
 }
 
@@ -212,19 +227,16 @@ static void omp_force_box (sotl_device_t *dev)
 static void omp_force_z (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
-  atom_set_sort(set);
-  calc_t sq_dist;
-
-
-#pragma omp for
+  atom_set_sort_2(set);
+  
+#pragma omp parallel for
   for (unsigned current = 0; current < set->natoms; current++) {
     calc_t force[3] = { 0.0, 0.0, 0.0 };
     
-    unsigned other = current+1;
-   
+    int other = current+1;
     
-    while (  (other < set->natoms) && (abs(set->pos.z[other] - set->pos.z[current]) < LENNARD_SQUARED_CUTOFF)){
-      sq_dist = squared_distance (set, current, other);
+    while (  (other < (int) set->natoms) && (abs(set->pos.z[other] - set->pos.z[current])) < LENNARD_SQUARED_CUTOFF){
+      calc_t sq_dist = squared_distance (set, current, other);
       if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	calc_t intensity = lennard_jones (sq_dist);
 	force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
@@ -239,8 +251,8 @@ static void omp_force_z (sotl_device_t *dev)
     
 
     other=current-1;
-    while ( (other >= 0) && (abs(set->pos.z[current] - set->pos.z[other]) < LENNARD_SQUARED_CUTOFF)){
-      sq_dist = squared_distance (set, current, other);
+    while ( (other >= 0) && (abs(set->pos.z[current] - set->pos.z[other])) < LENNARD_SQUARED_CUTOFF){
+      calc_t sq_dist = squared_distance (set, current, other);
       
       if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	calc_t intensity = lennard_jones (sq_dist);
@@ -265,35 +277,33 @@ static void omp_force_z (sotl_device_t *dev)
 //
 void omp_one_step_move (sotl_device_t *dev)
 {
-  sotl_atom_set_t *set = &dev->atom_set;
-#pragma omp parallel
-  {
-    // Apply gravity force
-    //
-    if (gravity_enabled)
-      omp_gravity (dev);
-    // Compute interactions between atoms
-    //
-    if (force_enabled){
+  // Apply gravity force
+  //
+  if (gravity_enabled)
+    omp_gravity (dev);
   
-      omp_force_z (dev);
+  // Compute interactions between atoms
+  //
+  if (force_enabled)
+    omp_force_z (dev);
   
-    }
-    // Bounce on borders
-    //
-    if(borders_enabled)
-      omp_bounce (dev);
-    // Update positions
-    //
-    omp_move (dev);
+  // Bounce on borders
+  //
+  if(borders_enabled)
+    omp_bounce (dev);
+  
+  // Update positions
+  //
+  omp_move (dev);
+  
 #ifdef HAVE_LIBGL
-    // Update OpenGL position
-    //
-    if (dev->display)
-      omp_update_vbo (dev);
+  // Update OpenGL position
+  //
+  if (dev->display)
+    omp_update_vbo (dev);
 #endif
-  }
 }
+
 
 
 void omp_init (sotl_device_t *dev)
@@ -302,7 +312,9 @@ void omp_init (sotl_device_t *dev)
   sotl_log(ERROR, "Sequential implementation does currently not support SPHERE_MODE\n");
   exit (1);
 #endif
+  
   borders_enabled = 1;
+
   dev->compute = SOTL_COMPUTE_OMP; // dummy op to avoid warning
 }
 
