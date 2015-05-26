@@ -191,6 +191,7 @@ void atom_set_sort(sotl_atom_set_t *set)
     heap_sort(set, set->natoms);
 }
 
+
 #ifdef HAVE_LIBGL
 void atom_build (int natoms, sotl_atom_pos_t * pos_vec)
 {

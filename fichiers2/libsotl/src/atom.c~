@@ -223,19 +223,15 @@ void atom_set_sort_parallel(sotl_atom_set_t *set)
 }
 
 
-int * atom_sort_boxes(sotl_device_t *dev)
+void atom_sort_boxes(sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
   sotl_domain_t *domain = &dev->domain;
 
-	//int out[set->natoms];
+	//int out[set->nbatoms];
 
 	int * boxes = atom_set_box_count(domain, set);
 
-	for (int i = 1; i < domain -> total_boxes; i++){
-	  boxes[i] += boxes[i-1];
-	}
-	
 	int count_boxes[domain->total_boxes];
 	for (int i = 0 ; i < domain->total_boxes ; i++){
 		count_boxes[i] = 0;
@@ -244,28 +240,19 @@ int * atom_sort_boxes(sotl_device_t *dev)
 	int pos_set = 0;
 	int num_box = 0;
 	int next_box = boxes[0];
-	int num_box_tmp;
-	
-	while (pos_set < set->natoms){
-	  while (pos_set < next_box){
-	    num_box_tmp = atom_get_num_box(domain, set->pos.x[pos_set], set->pos.y[pos_set], set->pos.z[pos_set], BOX_SIZE_INV);
-	    if( num_box_tmp != num_box){
-	      SWAP_ATOM(pos_set, boxes[num_box_tmp - 1] + count_boxes[num_box_tmp]);
-	      count_boxes[num_box_tmp]++;
-	    }
-	    else {
-	      pos_set++;
-	      count_boxes[num_box]++;
-	    }
-	  }
-	  num_box ++;
-	  if(num_box < domain-> total_boxes){
-	    next_box = boxes[num_box];
-	    pos_set += count_boxes[num_box];
-	  }	
+
+	while (pos_set < set->nbatoms){
+		(while pos_set < next_box){
+			if(atom_get_num_box(dom, set->pos.x[pos_set], set->pos.y[pos_set], set->pos.z[pos_set], BOX_SIZE_INV); 
+		
+ 
+
+
 	}
-	
-	return boxes;
+	}	
+
+
+
 }
 
 

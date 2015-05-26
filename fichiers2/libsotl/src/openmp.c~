@@ -175,59 +175,6 @@ static void omp_force (sotl_device_t *dev)
 }
 
 
-
-static void omp_force_box (sotl_device_t *dev)
-{
-   sotl_domain_t *dom = &dev->domain;
-  sotl_atom_set_t *set = &dev->atom_set;
-  int * boxes = atom_sort_boxes(dev);
-  int num_box_current, num_box_x, num_box_y ;
-  num_box_x = dom->boxes[0];
-  num_box_y = dom->boxes[1];
-  int deb;
-  int i,j,k;
-  int other_box;
-  int other;
-  
-#pragma omp parallel for
-  for (unsigned current = 0; current < set->natoms; current++) {
-    calc_t force[3] = { 0.0, 0.0, 0.0 };
-
-    num_box_current = atom_get_num_box(dom, set->pos.x[current], set->pos.y[current], set->pos.z[current], BOX_SIZE_INV);
-    
-    for (i = -1; i < 2 ; i++){
-      for (j = -1; j < 2 ; j++){
-	for (k = -1; k < 2 ; k++){
-	  other_box = num_box_current + i + (j * num_box_x) + (k * num_box_x * num_box_y );
-	  if (other_box >= 0 && other_box < dom->total_boxes){
-	    if (other_box == 0){
-	      deb = 0;
-	    }
-	    else {
-	      deb = boxes[other_box-1];
-	    }
-	    for (other = deb ; other < boxes[other_box] -1; other++){
-	      calc_t sq_dist = squared_distance (set, current, other);
-	      calc_t intensity = lennard_jones (squared_distance (set, current, other));
-	  
-	      force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
-	      force[1] += intensity * (set->pos.x[set->offset + current] -
-				       set->pos.x[set->offset + other]);
-	      force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
-				       set->pos.x[set->offset * 2 + other]);
-	 
-	    }
-	  }
-	}
-      }
-    }
-    set->speed.dx[current] += force[0];
-    set->speed.dx[set->offset + current] += force[1];
-    set->speed.dx[set->offset * 2 + current] += force[2];
-  }
-}
-
-
 // Main simulation function
 //
 void omp_one_step_move (sotl_device_t *dev)
