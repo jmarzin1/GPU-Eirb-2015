@@ -63,24 +63,25 @@ static void heap_sort(sotl_atom_set_t *set, const unsigned count)
 
 static void bubble_sort(sotl_atom_set_t *set, const unsigned count) {
   unsigned i,step;
-#pragma omp parallel private(step)
-  {
+
     for (step = count; step > 0; step--) {
       if (step % 2 == 0) {
 #pragma omp for private(i)
-	for (i = 0; i < count-1; i += 2)
-	  if (set->pos.z[i] > set->pos.z[i + 1]) {
-	    SWAP_ATOM(i, i+1);
-	  }
-      } else {
-#pragma omp for private(i)
-	for (i = 1; i < count-1; i += 2)
-	  if (set->pos.z[i] > set->pos.z[i + 1]) {
+	for (i = 0; i < count-1; i += 2) 
+	  if (set->pos.z[i] > set->pos.z[i+1]) {
 	    SWAP_ATOM(i,i+1);
 	  }
-      }
+	
+      }else {
+#pragma omp for private(i)
+	for (i = 1; i < count-1; i += 2) 
+	  if (set->pos.z[i] > set->pos.z[i+1]) {
+	    SWAP_ATOM(i,i+1);
+	  }
+	}
+      
     }
-  }
+
 }
 
 static void sift_down(sotl_atom_set_t *set, const int start, const int end)

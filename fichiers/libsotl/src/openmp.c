@@ -228,7 +228,6 @@ static void omp_force_z (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
   atom_set_sort_2(set);
-  calc_t sq_dist = 0;
   
 #pragma omp parallel for
   for (unsigned current = 0; current < set->natoms; current++) {
@@ -237,7 +236,7 @@ static void omp_force_z (sotl_device_t *dev)
     int other = current+1;
     
     while (  (other < (int) set->natoms) && (abs(set->pos.z[other] - set->pos.z[current])) < LENNARD_SQUARED_CUTOFF){
-      sq_dist = squared_distance (set, current, other);
+      calc_t sq_dist = squared_distance (set, current, other);
       if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	calc_t intensity = lennard_jones (sq_dist);
 	force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
@@ -253,7 +252,7 @@ static void omp_force_z (sotl_device_t *dev)
 
     other=current-1;
     while ( (other >= 0) && (abs(set->pos.z[current] - set->pos.z[other])) < LENNARD_SQUARED_CUTOFF){
-      sq_dist = squared_distance (set, current, other);
+      calc_t sq_dist = squared_distance (set, current, other);
       
       if (sq_dist < LENNARD_SQUARED_CUTOFF) {
 	calc_t intensity = lennard_jones (sq_dist);
@@ -265,7 +264,7 @@ static void omp_force_z (sotl_device_t *dev)
       }
       other--;
     }
-    
+  
     set->speed.dx[current] += force[0];
     set->speed.dx[set->offset + current] += force[1];
     set->speed.dx[set->offset * 2 + current] += force[2];
