@@ -1,0 +1,3 @@
+ssh jarnault@jaguar.emi.u-bordeaux1.fr
+services.emi.u-bordeaux.fr => démarrage à distance (ex : Tchekov)
+ssh jarnault@Tchekov.emi.u-bordeaux1.fr

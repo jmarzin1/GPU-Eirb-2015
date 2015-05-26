@@ -294,9 +294,13 @@ int atom_get_num_box(const sotl_domain_t *dom, const calc_t x, const calc_t y,
     box_id =  box_z * dom->boxes[0] * dom->boxes[1] +
               box_y * dom->boxes[0] +
               box_x;
-	//printf("%d + %d %d %d + %lf %lf %lf\n", box_id, box_x, box_y, box_z, x, y, z);
-    assert(box_id >= 0 && (unsigned)box_id < dom->total_boxes);
-    return box_id;
+
+    //assert(box_id >= 0 && (unsigned)box_id < dom->total_boxes);
+
+	if (box_id < 0 || (unsigned)box_id >= dom->total_boxes){
+		return 0;
+	}
+	return box_id;
 }
 
 int *atom_set_box_count(const sotl_domain_t *dom, const sotl_atom_set_t *set)
@@ -311,11 +315,15 @@ int *atom_set_box_count(const sotl_domain_t *dom, const sotl_atom_set_t *set)
 	//printf("\n\n\n COUNT \n\n\n");
 
     for (unsigned i = 0; i < set->natoms; i++) {
-		//printf("%d et %d\n", (int) set->natoms, i);
+
       int box_id = atom_get_num_box(dom, set->pos.x[i], set->pos.y[i], set->pos.z[i],
 				    BOX_SIZE_INV);
 
-      boxes[box_id]++;
+
+	if (box_id >= 0){
+    
+  		boxes[box_id]++;
+		}
     }
 
     return boxes;
