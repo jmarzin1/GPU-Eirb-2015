@@ -204,9 +204,10 @@ __kernel
 void gravity (__global calc_t * speed, calc_t gx, calc_t gy, calc_t gz,
 	      unsigned natoms, unsigned offset)
 {
-	unsigned index = get_global_id (0);	
-	const calc_t g = 0.005;
-	speed[index+offset]-=g;	
+  // TODO -> ok
+  unsigned index = get_global_id (0);
+  const calc_t g = 0.005;
+  speed[index+offset]-=g; 
 }
 
 
@@ -520,4 +521,14 @@ void box_force (__global calc_t *pos_buffer,
     store3coord (alt_pos_buffer + gid, my_pos, offset);
 #endif
   }
+}
+
+
+// Somme prefixe
+__kernel
+void scan (__global calc_t * boxbuffer, unsigned size,
+		      		  unsigned iteration)
+{
+    unsigned index = get_global_id (0);
+    boxbuffer[index] += boxbuffer[index-1];
 }

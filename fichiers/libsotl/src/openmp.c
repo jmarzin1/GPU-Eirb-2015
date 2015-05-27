@@ -15,115 +15,6 @@ static int *atom_state = NULL;
 
 #define SHOCK_PERIOD 50
 
-/***************
- ** Tri Boite **
- **************/
-
-struct boite {
-  unsigned int * atomes;
-  int nbAtomes;
-};
-
-struct boite * boites;
-int offset_y, offset_z;
-
-int init_boxes(){
-  sotl_atom_set_t *set = get_global_atom_set();
-  sotl_domain_t *domain = get_global_domain();
-  unsigned i;
-  offset_y = domain->boxes[0];
-  offset_z = domain->boxes[0] * domain->boxes[1];
-  boites = malloc(domain->total_boxes * sizeof(struct boite));
-  if(boites == NULL){
-    return EXIT_FAILURE;
-  }
-  for(i=0; i < domain->total_boxes;i++){
-    boites[i].nbAtomes = 0;
-    boites[i].atomes = malloc(set->natoms * sizeof(unsigned int));
-    if(boites[i].atomes == NULL){
-      return EXIT_FAILURE;
-    }
-  }
-  return EXIT_SUCCESS;
-}
-
-
-void sort_boxes(sotl_atom_set_t *set){
-  int pos;
-  sotl_domain_t *domain = get_global_domain();
-  for(unsigned i=0; i<domain->total_boxes;i++){
-    boites[i].nbAtomes = 0;
-  }
-  int box_x, box_y, box_z;
-  for(unsigned j = 0; j < set->natoms; j++){
-    box_x = (set->pos.x[j] / BOX_SIZE);
-    box_y = (set->pos.x[set->offset + j] / BOX_SIZE);
-    box_z = (set->pos.x[set->offset * 2 + j] / BOX_SIZE);
-    if(box_x >= 0 && box_y >= 0 && box_z >= 0 && box_x < (int) domain->boxes[0] && box_y < (int) domain->boxes[1] && box_z < (int) domain->boxes[2]){
-      pos = box_x +offset_y*box_y + offset_z*box_z;
-      boites[pos].atomes[boites[pos].nbAtomes] = j;
-      boites[pos].nbAtomes++;
-    }
-  }
-}
-
-
-
-static void omp_force_boite (sotl_device_t *dev)
-{
-  sotl_atom_set_t *set = &dev->atom_set;
-  sotl_domain_t *domain = &dev->domain;
-  sort_boxes(set);
-  
-#pragma omp for
-  for (unsigned current = 0; current < set->natoms; current++) {
-    calc_t force[3] = { 0.0, 0.0, 0.0 };
-    int x_box = (set->pos.x[current] / BOX_SIZE);
-    int y_box = (set->pos.x[set->offset + current] / BOX_SIZE);
-    int z_box = (set->pos.x[set->offset * 2 + current] / BOX_SIZE);
-    struct boite * b;
-    unsigned other;
-
-    for(int i = x_box-1; i <= x_box+1; i++){
-      for(int j = y_box-1; j <= y_box+1; j++){
-	for(int k = z_box-1; k <= z_box+1; k++){
-	  if(i >= 0 && j >= 0 && k >= 0 && i < (int) domain->boxes[0] && j < (int) domain->boxes[1] && k < (int)domain->boxes[2]){
-	    b = &boites[i+offset_y*j+offset_z*k];
-	    for(int l = 0; l< b->nbAtomes; l++){
-	      other = b->atomes[l];
-
-	      if(other != current){
-		calc_t sq_dist = squared_distance (set, current, other);
-		if (sq_dist < LENNARD_SQUARED_CUTOFF) {
-		  calc_t intensity = lennard_jones (sq_dist);
-		  force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
-		  force[1] += intensity * (set->pos.x[set->offset + current] -
-					   set->pos.x[set->offset + other]);
-		  force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
-					   set->pos.x[set->offset * 2 + other]);
-		}
-	      }
-	    }
-	  }
-	}
-      }
-    }
-    set->speed.dx[current] += force[0];
-    set->speed.dx[set->offset + current] += force[1];
-    set->speed.dx[set->offset * 2 + current] += force[2];
-  }
-}
-
-
-void free_boxes(){
-  sotl_domain_t *domain = get_global_domain();
-  unsigned i;
-  for(i=0; i< domain->total_boxes;i++){
-    free(boites[i].atomes);
-  }
-  free(boites);
-}
-
 
 // Update OpenGL Vertex Buffer Object
 //
@@ -272,6 +163,117 @@ static void omp_force_z (sotl_device_t *dev)
     set->speed.dx[set->offset * 2 + current] += force[2];
   }
   
+}
+
+
+
+/***************
+ ** Tri Boite **
+ **************/
+
+struct boite {
+  unsigned int * atomes;
+  int nbAtomes;
+};
+
+struct boite * boites;
+int offset_y, offset_z;
+
+int init_boxes(){
+  sotl_atom_set_t *set = get_global_atom_set();
+  sotl_domain_t *domain = get_global_domain();
+  unsigned i;
+  offset_y = domain->boxes[0];
+  offset_z = domain->boxes[0] * domain->boxes[1];
+  boites = malloc(domain->total_boxes * sizeof(struct boite));
+  if(boites == NULL){
+    return EXIT_FAILURE;
+  }
+  for(i=0; i < domain->total_boxes;i++){
+    boites[i].nbAtomes = 0;
+    boites[i].atomes = malloc(set->natoms * sizeof(unsigned int));
+    if(boites[i].atomes == NULL){
+      return EXIT_FAILURE;
+    }
+  }
+  return EXIT_SUCCESS;
+}
+
+
+void sort_boxes(sotl_atom_set_t *set){
+  int pos;
+  sotl_domain_t *domain = get_global_domain();
+  for(unsigned i=0; i<domain->total_boxes;i++){
+    boites[i].nbAtomes = 0;
+  }
+  int box_x, box_y, box_z;
+  for(unsigned j = 0; j < set->natoms; j++){
+    box_x = (set->pos.x[j] / BOX_SIZE);
+    box_y = (set->pos.x[set->offset + j] / BOX_SIZE);
+    box_z = (set->pos.x[set->offset * 2 + j] / BOX_SIZE);
+    if(box_x >= 0 && box_y >= 0 && box_z >= 0 && box_x < (int) domain->boxes[0] && box_y < (int) domain->boxes[1] && box_z < (int) domain->boxes[2]){
+      pos = box_x +offset_y*box_y + offset_z*box_z;
+      boites[pos].atomes[boites[pos].nbAtomes] = j;
+      boites[pos].nbAtomes++;
+    }
+  }
+}
+
+
+
+static void omp_force_boite (sotl_device_t *dev)
+{
+  sotl_atom_set_t *set = &dev->atom_set;
+  sotl_domain_t *domain = &dev->domain;
+  sort_boxes(set);
+  
+#pragma omp for
+  for (unsigned current = 0; current < set->natoms; current++) {
+    calc_t force[3] = { 0.0, 0.0, 0.0 };
+    int x_box = (set->pos.x[current] / BOX_SIZE);
+    int y_box = (set->pos.x[set->offset + current] / BOX_SIZE);
+    int z_box = (set->pos.x[set->offset * 2 + current] / BOX_SIZE);
+    struct boite * b;
+    unsigned other;
+
+    for(int i = x_box-1; i <= x_box+1; i++){
+      for(int j = y_box-1; j <= y_box+1; j++){
+	for(int k = z_box-1; k <= z_box+1; k++){
+	  if(i >= 0 && j >= 0 && k >= 0 && i < (int) domain->boxes[0] && j < (int) domain->boxes[1] && k < (int)domain->boxes[2]){
+	    b = &boites[i+offset_y*j+offset_z*k];
+	    for(int l = 0; l< b->nbAtomes; l++){
+	      other = b->atomes[l];
+
+	      if(other != current){
+		calc_t sq_dist = squared_distance (set, current, other);
+		if (sq_dist < LENNARD_SQUARED_CUTOFF) {
+		  calc_t intensity = lennard_jones (sq_dist);
+		  force[0] += intensity * (set->pos.x[current] - set->pos.x[other]);
+		  force[1] += intensity * (set->pos.x[set->offset + current] -
+					   set->pos.x[set->offset + other]);
+		  force[2] += intensity * (set->pos.x[set->offset * 2 + current] -
+					   set->pos.x[set->offset * 2 + other]);
+		}
+	      }
+	    }
+	  }
+	}
+      }
+    }
+    set->speed.dx[current] += force[0];
+    set->speed.dx[set->offset + current] += force[1];
+    set->speed.dx[set->offset * 2 + current] += force[2];
+  }
+}
+
+
+void free_boxes(){
+  sotl_domain_t *domain = get_global_domain();
+  unsigned i;
+  for(i=0; i< domain->total_boxes;i++){
+    free(boites[i].atomes);
+  }
+  free(boites);
 }
 
 
