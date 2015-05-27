@@ -524,11 +524,29 @@ void box_force (__global calc_t *pos_buffer,
 }
 
 
+#define SWAP(a,b) {__local calc_t *tmp=a; a= b; b=tmp;}
 // Somme prefixe
 __kernel
-void scan (__global calc_t * boxbuffer, unsigned size,
-		      		  unsigned iteration)
+void scan (__global calc_t *boxbuffer, __global calc_t *result)
 {
-    unsigned index = get_global_id (0);
-    boxbuffer[index] += boxbuffer[index-1];
+__local calc_t *b, __local calc_t *c
+ int gid = get_global_id(0);
+ int lid = get_local_id(0);
+ int gs = get_local_size(0);
+
+ c[lid]= b[lid] = a[gid];
+ barrier(CLK_LOCAL_MEM_FENCE);
+
+ for (int s = 1; s <gs; s*=2) {
+ if (lid > (s-1)) {
+    c[lid] = b[lid] + b[lid-s];
+ }
+ else {
+      c[lid] = b[lid];
+ }
+ }
+ barrier(CLK_LOCAL_MEM_FENCE);
+ SWAP(b,c);
+ }
+ r[gid] = b[lid]
 }

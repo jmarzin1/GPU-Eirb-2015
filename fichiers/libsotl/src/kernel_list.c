@@ -9,7 +9,7 @@ static char *kernels_name[KERNEL_TAB_SIZE] = {
   "reset_int_buffer", // reset_int
   "box_count_all_atoms", // box count_all
   "null_kernel", // box_count (NOT USED)
-  "null_kernel", // scan (TODO)
+  "scan", // scan (TODO)
   "null_kernel", // scan2 (TODO)
   "copy_buffer", // copy
   "box_sort_all_atoms", // box_sort_all

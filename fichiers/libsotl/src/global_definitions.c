@@ -14,5 +14,5 @@ unsigned force_enabled = 0;
 unsigned gravity_enabled = 0;
 unsigned borders_enabled = 1;
 
-bool is_box_mode = false; 
+bool is_box_mode = true; 
 

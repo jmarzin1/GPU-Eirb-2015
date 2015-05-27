@@ -429,22 +429,20 @@ void scan(sotl_device_t *dev, const unsigned begin, const unsigned end)
  
     int k = KERNEL_SCAN;
     int err = CL_SUCCESS;
-    unsigned int iteration = 1;
-    
-    while (iteration < (dev->domain.total_boxes+1)){
-    err |= clSetKernelArg (dev->kernel[k], 0, sizeof (cl_mem), dev->box_buffer);
-    err |= clSetKernelArg (dev->kernel[k], 1, sizeof (cl_mem), dev->domain.total_boxes + 1);
-    err |= clSetKernelArg (dev->kernel[k], 2, sizeof (cl_mem), iteration);
+
+    //faire passer les bons arguments à la fonction
+    err |= clSetKernelArg (dev->kernel[k], 0, sizeof (cl_mem), &dev->box_buffer);
+    err |= clSetKernelArg (dev->kernel[k], 1, sizeof (dev->domain.total_boxes +1), &dev->domain.total_boxes + 1);
+    err |= clSetKernelArg (dev->kernel[k], 2, sizeof (unsigned), &iteration);
     check(err, "Failed to set kernel arguments: %s", kernel_name(k));
 
-    size_t global = dev->domain.total_boxes + 1; 
-    size_t local = MIN(iteration, dev->max_workgroup_size);
+    size_t global = dev->domain.total_boxes + 1;
+    size_t local = MIN(dev->tile_size, dev->max_workgroup_size);
 
     err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, NULL, &global, &local, 0,
-				  NULL, prof_event_ptr(dev,k));
+    				  NULL, prof_event_ptr(dev,k));
     check(err, "Failed to exec kernel: %s\n", kernel_name(k));
-    iteration += dev->domain.total_boxes + 1;
-    }
+    //faire une boucle sur chaque portion de tableau où la somme a été réalisée
 }
 
 void null_kernel (sotl_device_t *dev)
