@@ -254,7 +254,7 @@ __kernel void null_kernel (void)
 {}
 
 
-__kernel void kernel_scan (__global calc_t * global_array,  __local calc_t * local_array)
+__kernel void kernel_scan (__global calc_t * global_array, unsigned size, __local calc_t * local_array)
 {
     unsigned index = get_global_id (0);
     unsigned local_id = get_local_id (0);
@@ -276,7 +276,7 @@ __kernel void kernel_scan (__global calc_t * global_array,  __local calc_t * loc
 }
 
 
-__kernel void kernel_scan_down_step (__global calc_t * global_array, int num_group)
+__kernel void kernel_scan_down_step (__global calc_t * global_array, unsigned num_group)
 {
     unsigned local_id = get_local_id (0);
     unsigned local_size = get_local_size(0);
