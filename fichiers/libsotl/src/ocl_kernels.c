@@ -431,7 +431,7 @@ void scan(sotl_device_t *dev, const unsigned begin, const unsigned end)
   int err = CL_SUCCESS;
   calc_t * result = malloc ((dev->domain.total_boxes+1)* sizeof(calc_t));
   err |= clSetKernelArg (dev->kernel[k], 0, sizeof (cl_mem), &dev->box_buffer);
-  err |= clSetKernelArg (dev->kernel[k], 1, sizeof (cl_mem), &result);
+  err |= clSetKernelArg (dev->kernel[k], 1, sizeof (float) * (dev->domain.total_boxes+1) , &result);
   check(err, "Failed to set kernel arguments: %s", kernel_name(k));
   size_t global = dev->domain.total_boxes+1;
   size_t local = MIN(dev->tile_size, dev->max_workgroup_size);

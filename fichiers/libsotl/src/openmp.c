@@ -22,7 +22,7 @@ static void omp_update_vbo (sotl_device_t *dev)
 {
  sotl_atom_set_t */*restrict*/ set = &dev->atom_set;
 
-#pragma omp for //simd safelen(8)
+#pragma omp parallel for //simd safelen(8)
   for (unsigned n = 0; n < set->natoms; n++) {
     vbo_vertex[n*3 + 0] = set->pos.x[n];
     vbo_vertex[n*3 + 1] = set->pos.y[n];
@@ -61,7 +61,7 @@ static void omp_gravity (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
   const calc_t g = 0.005;
-#pragma omp for
+#pragma omp parallel for
   for (unsigned n = 0; n < set->natoms; n++) {
     set->speed.dy[n] -= g*set->pos.y[n];
   }
@@ -72,7 +72,7 @@ static void omp_bounce (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
   sotl_domain_t *domain = &dev->domain;
-#pragma omp for
+#pragma omp parallel for
   for (unsigned n = 0; n < set->natoms; n++) {
     if (set->pos.x[n] < domain->min_ext[0] || set->pos.x[n] > domain->max_ext[0]){
       atom_state[n] = SHOCK_PERIOD;
@@ -207,6 +207,7 @@ void sort_boxes(sotl_atom_set_t *set){
     boites[i].nbAtomes = 0;
   }
   int box_x, box_y, box_z;
+  
   for(unsigned j = 0; j < set->natoms; j++){
     box_x = (set->pos.x[j] / BOX_SIZE);
     box_y = (set->pos.x[set->offset + j] / BOX_SIZE);
@@ -227,7 +228,7 @@ static void omp_force_boite (sotl_device_t *dev)
   sotl_domain_t *domain = &dev->domain;
   sort_boxes(set);
   
-#pragma omp for
+#pragma omp parallel for
   for (unsigned current = 0; current < set->natoms; current++) {
     calc_t force[3] = { 0.0, 0.0, 0.0 };
     int x_box = (set->pos.x[current] / BOX_SIZE);
