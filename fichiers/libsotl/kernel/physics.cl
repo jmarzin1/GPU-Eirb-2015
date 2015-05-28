@@ -524,29 +524,26 @@ void box_force (__global calc_t *pos_buffer,
 }
 
 
-#define SWAP(a,b) {__local calc_t *tmp=a; a= b; b=tmp;}
-// Somme prefixe
-__kernel
-void scan (__global calc_t *boxbuffer, __global calc_t *result)
+__kernel void scan (__global calc_t * global_array, __local calc_t * local_array)
 {
-__local calc_t *b, __local calc_t *c
- int gid = get_global_id(0);
- int lid = get_local_id(0);
- int gs = get_local_size(0);
+unsigned index = get_global_id (0);
+unsigned local_id = get_local_id (0);
+unsigned local_size = get_local_size(0);
+local_array[index] = global_array[index];
+barrier (CLK_LOCAL_MEM_FENCE);
+for (unsigned i = 1 ; i < local_size ; i *=2){
+if (local_id >= i){
+local_array[index] += local_array[index - i];
+}
+barrier (CLK_LOCAL_MEM_FENCE);
+}
+global_array[index] = local_array[index];
+}
 
- c[lid]= b[lid] = a[gid];
- barrier(CLK_LOCAL_MEM_FENCE);
-
- for (int s = 1; s <gs; s*=2) {
- if (lid > (s-1)) {
-    c[lid] = b[lid] + b[lid-s];
- }
- else {
-      c[lid] = b[lid];
- }
- }
- barrier(CLK_LOCAL_MEM_FENCE);
- SWAP(b,c);
- }
- r[gid] = b[lid]
+__kernel void scan2 (__global calc_t * global_array, unsigned num_group)
+{
+unsigned local_id = get_local_id (0);
+unsigned local_size = get_local_size(0);
+unsigned post_partial_workgroup_sum = global_array[num_group*local_size - 1];
+global_array[num_group*local_size + local_id] += post_partial_workgroup_sum;
 }

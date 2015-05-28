@@ -46,5 +46,7 @@ void box_lennard_jones(sotl_device_t *dev, const unsigned begin,
                        const unsigned end);
 
 void null_kernel (sotl_device_t *dev);
+void scan_down_step(sotl_device_t *dev);
+
 
 #endif
