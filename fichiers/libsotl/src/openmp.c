@@ -46,7 +46,7 @@ static void omp_update_vbo (sotl_device_t *dev)
 static void omp_move (sotl_device_t *dev)
 {
   sotl_atom_set_t *set = &dev->atom_set;
-#pragma omp for
+#pragma omp parallel for
   for (unsigned n = 0; n < set->natoms; n++) {
     set->pos.x[n] += set->speed.dx[n];
     set->pos.y[n] += set->speed.dy[n];
