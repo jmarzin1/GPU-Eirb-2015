@@ -425,38 +425,42 @@ void resetAnimation (void)
 void scan(sotl_device_t *dev, const unsigned begin, const unsigned end)
 {
     // TODO
+  //pour enlever les warnings
   int size = end - begin;
   size +=1;
+  //
+  
   int k = KERNEL_SCAN;
   int err = CL_SUCCESS;
-  calc_t * result = malloc ((dev->domain.total_boxes+1)* sizeof(calc_t));
+  cl_mem result = malloc ((dev->domain.total_boxes+1)* sizeof(calc_t));
   err |= clSetKernelArg (dev->kernel[k], 0, sizeof (cl_mem), &dev->box_buffer);
-  err |= clSetKernelArg (dev->kernel[k], 1, sizeof (float) * (dev->domain.total_boxes+1) , &result);
+  err |= clSetKernelArg (dev->kernel[k], 1, sizeof (cl_mem), &result);
   check(err, "Failed to set kernel arguments: %s", kernel_name(k));
   size_t global = dev->domain.total_boxes+1;
   size_t local = MIN(dev->tile_size, dev->max_workgroup_size);
   err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, NULL, &global, &local, 0,
 				NULL, prof_event_ptr(dev,k));
   check(err, "Failed to exec kernel: %s\n", kernel_name(k));
-  scan_down_step(dev);
-}
-
-void scan_down_step(sotl_device_t *dev){
-  int k = KERNEL_SCAN_DOWN_STEP;
-  int err = CL_SUCCESS;
-  int group_size = MIN(dev->tile_size, dev->max_workgroup_size);
-  int nb_group = (dev->domain.total_boxes+1) / group_size;
-  for (int i = 1 ; i < nb_group ; i++){
-    err |= clSetKernelArg (dev->kernel[k], 0, sizeof (cl_mem), &dev->box_buffer);
-    err |= clSetKernelArg (dev->kernel[k], 1, sizeof (unsigned), &i);
-    check(err, "Failed to set kernel arguments: %s", kernel_name(k));
-    size_t global = group_size;
-    size_t local = 1;
-    err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, NULL, &global, &local, 0,
-				  NULL, prof_event_ptr(dev,k));
-    check(err, "Failed to exec kernel: %s\n", kernel_name(k));
+  unsigned nb_group = (dev->domain.total_boxes+1) / local;
+  dev->box_buffer = result;
+  for (unsigned i = 0; i < nb_group; i++) {
+    scan_down_step(dev,i);
   }
 }
+
+void scan_down_step(sotl_device_t *dev, unsigned i){
+  int k = KERNEL_SCAN_DOWN_STEP;
+  int err = CL_SUCCESS;
+  err |= clSetKernelArg (dev->kernel[k], 0, sizeof (cl_mem), &dev->box_buffer);
+  err |= clSetKernelArg (dev->kernel[k], 1, sizeof (unsigned), &i);
+  check(err, "Failed to set kernel arguments: %s", kernel_name(k));
+  size_t global = MIN(dev->tile_size, dev->max_workgroup_size);
+  size_t local = 1;
+  err = clEnqueueNDRangeKernel (dev->queue, dev->kernel[k], 1, NULL, &global, &local, 0,
+				NULL, prof_event_ptr(dev,k));
+  check(err, "Failed to exec kernel: %s\n", kernel_name(k));
+}
+
 
 void null_kernel (sotl_device_t *dev)
 {
