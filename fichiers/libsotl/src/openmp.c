@@ -210,7 +210,7 @@ void print(struct boite* boites, int n) {
 }
 
 //fonction qui place les atomes dans les boites 
-void sort_boxes(sotl_atom_set_t *set){
+void fill_boxes(sotl_atom_set_t *set){
   int pos;
   sotl_domain_t *domain = get_global_domain();
   for(unsigned i=0; i<domain->total_boxes;i++){
@@ -229,7 +229,7 @@ void sort_boxes(sotl_atom_set_t *set){
       boites[pos].nbAtomes++;
     }
   }
-  print(boites,domain->total_boxes);
+  //print(boites,domain->total_boxes);
 }
 
 
@@ -250,7 +250,7 @@ static void omp_force_boite (sotl_device_t *dev)
     unsigned other;
 
 
-    //recherche de la boite qui contient l'atome courant
+    //calcul des forces pour chacunes des boites autour de la boite qui contient l'atome courant
     for(int i = x_box-1; i <= x_box+1; i++){
       for(int j = y_box-1; j <= y_box+1; j++){
 	for(int k = z_box-1; k <= z_box+1; k++){
