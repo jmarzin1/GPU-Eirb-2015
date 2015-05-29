@@ -179,6 +179,7 @@ struct boite {
 struct boite * boites;
 int offset_y, offset_z;
 
+/*fonction d'initialisation */
 int init_boxes(){
   sotl_atom_set_t *set = get_global_atom_set();
   sotl_domain_t *domain = get_global_domain();
@@ -213,6 +214,7 @@ void sort_boxes(sotl_atom_set_t *set){
     box_y = (set->pos.x[set->offset + j] / BOX_SIZE);
     box_z = (set->pos.x[set->offset * 2 + j] / BOX_SIZE);
     if(box_x >= 0 && box_y >= 0 && box_z >= 0 && box_x < (int) domain->boxes[0] && box_y < (int) domain->boxes[1] && box_z < (int) domain->boxes[2]){
+      //placement de l'atome dans la bonne boite
       pos = box_x +offset_y*box_y + offset_z*box_z;
       boites[pos].atomes[boites[pos].nbAtomes] = j;
       boites[pos].nbAtomes++;
@@ -237,11 +239,14 @@ static void omp_force_boite (sotl_device_t *dev)
     struct boite * b;
     unsigned other;
 
+    //recherche de la boite adéquate
     for(int i = x_box-1; i <= x_box+1; i++){
       for(int j = y_box-1; j <= y_box+1; j++){
 	for(int k = z_box-1; k <= z_box+1; k++){
 	  if(i >= 0 && j >= 0 && k >= 0 && i < (int) domain->boxes[0] && j < (int) domain->boxes[1] && k < (int)domain->boxes[2]){
 	    b = &boites[i+offset_y*j+offset_z*k];
+
+	    //calcule des forces associées
 	    for(int l = 0; l< b->nbAtomes; l++){
 	      other = b->atomes[l];
 
